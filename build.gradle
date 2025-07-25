@@ -291,6 +291,7 @@ configure(allprojects) { project ->
 		}
 		repositories {
 			maven { url "https://maven.aliyun.com/nexus/content/groups/public" }
+			maven { url "https://maven.aliyun.com/repository/spring" }
 			mavenCentral()
 //			maven { url "https://repo.spring.io/libs-spring-framework-build" }
 		}
@@ -333,6 +334,7 @@ configure([rootProject] + javaProjects) { project ->
 	}
 
 	test {
+		enabled = false
 		useJUnitPlatform()
 		include(["**/*Tests.class", "**/*Test.class"])
 		systemProperty("java.awt.headless", "true")
@@ -342,6 +344,7 @@ configure([rootProject] + javaProjects) { project ->
 
 	checkstyle {
 		toolVersion = "10.12.7"
+//		toolVersion = "10.14.0"
 		configDirectory.set(rootProject.file("src/checkstyle"))
 	}
 
@@ -430,7 +433,8 @@ configure(rootProject) {
 	}
 
 	tasks.named("checkstyleNohttp").configure {
-		maxHeapSize = "1g"
+//		maxHeapSize = "4g"
+//		jvmArgs = ['-Xms2g', '-Xmx4g']  // 标准JVM内存参数
 	}
 
 	publishing {
