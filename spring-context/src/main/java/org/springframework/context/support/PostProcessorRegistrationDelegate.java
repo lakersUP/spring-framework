@@ -45,6 +45,7 @@ import org.springframework.lang.Nullable;
 
 /**
  * Delegate for AbstractApplicationContext's post-processor handling.
+ * 专门为context处理post-processor的处理器
  *
  * @author Juergen Hoeller
  * @author Sam Brannen
