@@ -201,6 +201,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	private ConfigurableEnvironment environment;
 
 	/** BeanFactoryPostProcessors to apply on refresh. */
+	// 用于存放用户手动注册的beanFactoryPostProcessor
 	private final List<BeanFactoryPostProcessor> beanFactoryPostProcessors = new ArrayList<>();
 
 	/** System time in milliseconds when this context started. */
@@ -580,7 +581,9 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 				// Invoke factory processors registered as beans in the context.4
 				// 主要作用：允许容器在加载了bean定义后，实例化任何bean之前，修改bean的定义。
 				// Spring扩展性的一个关键体现: 此步骤实例化并调用所有已注册的 BeanFactoryPostProcessor，回调postProcessBeanFactory方法等。
-				// 此步骤就是负责扫描@Component、@Configuration、@Bean等注解标记的类，并将它们解析为 Bean 定义注册到容器
+				// 此时已经有一些核心的BeanDefinitionRegistryPostProcessor实现类，在Context创建启动时就已经注册进来了
+				// 比如ConfigurationClassPostProcessor这个默认实现类，他的作用就是负责扫描@Component、@Configuration、@Bean等注解标记的类，并将它们解析为Bean定义注册到容器。
+				// 对于应用程序的bean，此时正是进入生命周期，开始创建BeanDefinition对象
 				invokeBeanFactoryPostProcessors(beanFactory);
 
 

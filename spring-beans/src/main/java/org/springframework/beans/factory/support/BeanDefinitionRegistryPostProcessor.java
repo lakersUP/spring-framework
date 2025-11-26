@@ -25,11 +25,18 @@ import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
  * BeanFactoryPostProcessor detection kicks in. In particular,
  * BeanDefinitionRegistryPostProcessor may register further bean definitions
  * which in turn define BeanFactoryPostProcessor instances.
+ * 在完成 BeanDefinition 注册后，还需要进一步修改 BeanFactory 的行为，因此需要这两个阶段都支持。
+ * 以ConfigurationClassPostProcessor为例：
+ * 1、在 postProcessBeanDefinitionRegistry() 中扫描包路径并注册 BeanDefinition；
+ * 2、在 postProcessBeanFactory() 中做一些后续处理（如将配置类标记为 full 或 lite）。
  *
  * @author Juergen Hoeller
  * @since 3.0.1
  * @see org.springframework.context.annotation.ConfigurationClassPostProcessor
  */
+
+//
+
 public interface BeanDefinitionRegistryPostProcessor extends BeanFactoryPostProcessor {
 
 	/**
@@ -42,6 +49,7 @@ public interface BeanDefinitionRegistryPostProcessor extends BeanFactoryPostProc
 	 * @param registry the bean definition registry used by the application context
 	 * @throws org.springframework.beans.BeansException in case of errors
 	 */
+	// 用于注册BeanDefinition
 	void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) throws BeansException;
 
 }
