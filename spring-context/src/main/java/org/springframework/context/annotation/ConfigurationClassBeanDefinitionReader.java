@@ -391,6 +391,7 @@ class ConfigurationClassBeanDefinitionReader {
 		});
 	}
 
+	// 正真的注册BeanDefinition阶段
 	private void loadBeanDefinitionsFromRegistrars(Map<ImportBeanDefinitionRegistrar, AnnotationMetadata> registrars) {
 		registrars.forEach((registrar, metadata) ->
 				registrar.registerBeanDefinitions(metadata, this.registry, this.importBeanNameGenerator));

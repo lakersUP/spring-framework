@@ -268,6 +268,7 @@ class ConfigurationClassParser {
 
 		if (configClass.getMetadata().isAnnotated(Component.class.getName())) {
 			// Recursively process any member (nested) classes first
+			// 递归处理内部配置类
 			processMemberClasses(configClass, sourceClass, filter);
 		}
 
@@ -275,6 +276,7 @@ class ConfigurationClassParser {
 		for (AnnotationAttributes propertySource : AnnotationConfigUtils.attributesForRepeatable(
 				sourceClass.getMetadata(), PropertySources.class,
 				org.springframework.context.annotation.PropertySource.class)) {
+			// 加载外部属性文件（如 .properties文件）中的属性值到 Spring 的 Environment中，供后续 @Value注解或属性占位符使用
 			if (this.environment instanceof ConfigurableEnvironment) {
 				processPropertySource(propertySource);
 			}
@@ -287,6 +289,7 @@ class ConfigurationClassParser {
 		// Process any @ComponentScan annotations
 		Set<AnnotationAttributes> componentScans = AnnotationConfigUtils.attributesForRepeatable(
 				sourceClass.getMetadata(), ComponentScans.class, ComponentScan.class);
+		// 核心逻辑，处理解析@Component, @Service, @Controller, @Repository等注解
 		if (!componentScans.isEmpty() &&
 				!this.conditionEvaluator.shouldSkip(sourceClass.getMetadata(), ConfigurationPhase.REGISTER_BEAN)) {
 			for (AnnotationAttributes componentScan : componentScans) {
@@ -300,13 +303,15 @@ class ConfigurationClassParser {
 						bdCand = holder.getBeanDefinition();
 					}
 					if (ConfigurationClassUtils.checkConfigurationClassCandidate(bdCand, this.metadataReaderFactory)) {
+						// 递归解析
 						parse(bdCand.getBeanClassName(), holder.getBeanName());
 					}
 				}
 			}
 		}
 
-		// Process any @Import annotations
+		// Process any @Import annotations 处理@Import注解，这是集成第三方框架的核心，@Import支持导入三种不同的类
+		// Springboot使用导入ImportSelector接口实现类，Mybatis使用导入ImportBeanDefinitionRegistrar接口实现类，动态注册Mapper
 		processImports(configClass, sourceClass, getImports(sourceClass), filter, true);
 
 		// Process any @ImportResource annotations
@@ -347,6 +352,7 @@ class ConfigurationClassParser {
 
 	/**
 	 * Register member (nested) classes that happen to be configuration classes themselves.
+	 * 递归处理内部类
 	 */
 	private void processMemberClasses(ConfigurationClass configClass, SourceClass sourceClass,
 			Predicate<String> filter) throws IOException {
@@ -552,6 +558,14 @@ class ConfigurationClassParser {
 		}
 	}
 
+	/**
+	 *
+	 * @param configClass 当前正在处理的类
+	 * @param currentSourceClass 当前正在处理的源类，通常与configClass相关
+	 * @param importCandidates  一个 SourceClass集合，包含了通过 @Import注解指定的所有待导入的类
+	 * @param exclusionFilter 用于排除某些类的不被处理的过滤器
+	 * @param checkForCircularImports 指示是否需要检查循环导入
+	 */
 	private void processImports(ConfigurationClass configClass, SourceClass currentSourceClass,
 			Collection<SourceClass> importCandidates, Predicate<String> exclusionFilter,
 			boolean checkForCircularImports) {
@@ -567,6 +581,8 @@ class ConfigurationClassParser {
 			this.importStack.push(configClass);
 			try {
 				for (SourceClass candidate : importCandidates) {
+					// 处理ImportSelector接口实现类
+					// 调用其 selectImports方法获取类名数组，然后将这些类递归处理。这是Spring Boot自动配置的关键机制
 					if (candidate.isAssignable(ImportSelector.class)) {
 						// Candidate class is an ImportSelector -> delegate to it to determine imports
 						Class<?> candidateClass = candidate.loadClass();
@@ -578,13 +594,16 @@ class ConfigurationClassParser {
 						}
 						if (selector instanceof DeferredImportSelector) {
 							this.deferredImportSelectorHandler.handle(configClass, (DeferredImportSelector) selector);
-						}
-						else {
+						} else {
 							String[] importClassNames = selector.selectImports(currentSourceClass.getMetadata());
 							Collection<SourceClass> importSourceClasses = asSourceClasses(importClassNames, exclusionFilter);
+							// 关键：递归调用processImports本身来处理selectImports方法返回的类
 							processImports(configClass, currentSourceClass, importSourceClasses, exclusionFilter, false);
 						}
 					}
+					// 处理ImportBeanDefinitionRegistrar接口实现类，
+					// 将这些 Registrar 实例暂存到 ConfigurationClass的 importBeanDefinitionRegistrars映射中，
+					// 留待后续调用其 registerBeanDefinitions方法手动注册 Bean 定义。MyBatis 的 @MapperScan注解就利用此机制动态注册 Mapper 接口
 					else if (candidate.isAssignable(ImportBeanDefinitionRegistrar.class)) {
 						// Candidate class is an ImportBeanDefinitionRegistrar ->
 						// delegate to it to register additional bean definitions
@@ -592,11 +611,13 @@ class ConfigurationClassParser {
 						ImportBeanDefinitionRegistrar registrar =
 								ParserStrategyUtils.instantiateClass(candidateClass, ImportBeanDefinitionRegistrar.class,
 										this.environment, this.resourceLoader, this.registry);
+						// 关键：并不立即注册，而是将Registrar实例暂存起来
 						configClass.addImportBeanDefinitionRegistrar(registrar, currentSourceClass.getMetadata());
 					}
 					else {
 						// Candidate class not an ImportSelector or ImportBeanDefinitionRegistrar ->
 						// process it as an @Configuration class
+						// 普通类
 						this.importStack.registerImport(
 								currentSourceClass.getMetadata(), candidate.getMetadata().getClassName());
 						processConfigurationClass(candidate.asConfigClass(configClass), exclusionFilter);
